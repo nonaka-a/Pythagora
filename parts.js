@@ -160,31 +160,6 @@ export function createPartMesh(type) {
   return mesh;
 }
 
-export function createWedgePolyhedron(w, h, d) {
-  const hw = w / 2;
-  const hh = h / 2;
-  const hd = d / 2;
-
-  const vertices = [
-    new CANNON.Vec3(-hw, -hh, -hd),
-    new CANNON.Vec3( hw, -hh, -hd),
-    new CANNON.Vec3(-hw,  hh, -hd),
-    new CANNON.Vec3(-hw, -hh,  hd),
-    new CANNON.Vec3( hw, -hh,  hd),
-    new CANNON.Vec3(-hw,  hh,  hd)
-  ];
-
-  const faces = [
-    [0, 1, 4, 3],
-    [0, 3, 5, 2],
-    [1, 2, 5, 4],
-    [0, 2, 1],
-    [3, 4, 5]
-  ];
-
-  return new CANNON.ConvexPolyhedron({ vertices, faces });
-}
-
 export function buildCannonBody(obj) {
   if (obj.userData.type === 'goalHole') return null;
 
@@ -201,9 +176,11 @@ export function buildCannonBody(obj) {
       mass: uData.mass ?? 2.0,
       shape: new CANNON.Sphere(radius),
       material: physicsMaterial,
-      linearDamping: 0.02,
-      angularDamping: 0.02
+      linearDamping: 0.01,
+      angularDamping: 0.01
     });
+    body.ccdSpeedThreshold = 0.5;
+    body.ccdIterations = 5;
   } else if (uData.shape === 'box') {
     const s = uData.size;
     body = new CANNON.Body({
@@ -218,9 +195,11 @@ export function buildCannonBody(obj) {
       mass: mass,
       shape: new CANNON.Sphere(uData.radius * scale.x),
       material: physicsMaterial,
-      linearDamping: 0.02,
-      angularDamping: 0.02
+      linearDamping: 0.01,
+      angularDamping: 0.01
     });
+    body.ccdSpeedThreshold = 0.5;
+    body.ccdIterations = 5;
   } else if (uData.shape === 'cylinder') {
     const s = uData.size;
     body = new CANNON.Body({
@@ -230,12 +209,31 @@ export function buildCannonBody(obj) {
     });
   } else if (uData.shape === 'slope') {
     const s = uData.size;
-    const slopeShape = createWedgePolyhedron(s[0] * scale.x, s[1] * scale.y, s[2] * scale.z);
-    body = new CANNON.Body({
-      mass: mass,
-      shape: slopeShape,
-      material: physicsMaterial
-    });
+    const w = s[0] * scale.x;
+    const h = s[1] * scale.y;
+    const d = s[2] * scale.z;
+
+    body = new CANNON.Body({ mass: mass, material: physicsMaterial });
+
+    // 斜面の長手寸法と傾斜角の計算
+    const rampLength = Math.hypot(w, h);
+    const angle = Math.atan2(h, w); // 傾き角度
+    const rampThickness = 0.25 * scale.y;
+
+    // 1. 頑丈なBox形状による斜面（すり抜けを遮断）
+    const rampShape = new CANNON.Box(new CANNON.Vec3(rampLength / 2, rampThickness / 2, d / 2));
+    const rampQuat = new CANNON.Quaternion();
+    rampQuat.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), -angle);
+
+    // 斜面の法線方向へ厚みの半分だけ内側にオフセット
+    const nx = Math.sin(angle);
+    const ny = -Math.cos(angle);
+    const rampOffset = new CANNON.Vec3(nx * (rampThickness / 2), ny * (rampThickness / 2), 0);
+    body.addShape(rampShape, rampOffset, rampQuat);
+
+    // 2. 底面支えブロック（床や他オブジェクトとの衝突用）
+    const baseBlock = new CANNON.Box(new CANNON.Vec3(w / 4, h / 4, d / 2));
+    body.addShape(baseBlock, new CANNON.Vec3(-w / 4, -h / 4, 0));
   } else if (uData.shape === 'compositeRail') {
     body = new CANNON.Body({ mass: mass, material: physicsMaterial });
     const baseShape = new CANNON.Box(new CANNON.Vec3((1.2 * scale.x) / 2, (0.1 * scale.y) / 2, (3.0 * scale.z) / 2));

@@ -31,6 +31,9 @@ let goalHole = null;
 let goalTimeoutId = null;
 let isGoalReached = false;
 
+let bgmAudio = null;
+let isBgmPlaying = false;
+
 const DEFAULT_CAM_POS = new THREE.Vector3(0, 9, 15);
 const DEFAULT_CAM_TARGET = new THREE.Vector3(0, 2, 0);
 
@@ -109,11 +112,38 @@ function init() {
   });
   scene.add(transformControl);
 
+  initAudio();
   setupStaticStage();
   setupEvents();
   setupUIEvents();
   setupCameraWidget();
   renderSlotsUI();
+}
+
+function initAudio() {
+  bgmAudio = new Audio('sounds/BGM1.mp3');
+  bgmAudio.loop = true;
+  bgmAudio.volume = 0.4;
+}
+
+function toggleBGM() {
+  if (!bgmAudio) return;
+  const btn = document.getElementById('btn-bgm-toggle');
+  if (isBgmPlaying) {
+    bgmAudio.pause();
+    isBgmPlaying = false;
+    btn.innerText = 'BGM: OFF';
+    btn.classList.remove('primary');
+  } else {
+    bgmAudio.play().then(() => {
+      isBgmPlaying = true;
+      btn.innerText = 'BGM: ON';
+      btn.classList.add('primary');
+    }).catch(() => {
+      isBgmPlaying = false;
+      btn.innerText = 'BGM: OFF';
+    });
+  }
 }
 
 function setupStaticStage() {
@@ -424,6 +454,11 @@ function renderSlotsUI() {
     btnSave.className = 'btn small primary';
     btnSave.innerText = 'ここに保存';
     btnSave.addEventListener('click', () => {
+      const confirmMsg = slot.data 
+        ? `【${titleInput.value}】には既にデータがあります。上書き保存しますか？` 
+        : `【${titleInput.value}】に現在のステージを保存しますか？`;
+      if (!window.confirm(confirmMsg)) return;
+
       if (isPlaying) stopSimulation();
       saveSlot(slot.id, titleInput.value, serializeRegisteredObjects(registeredObjects));
       renderSlotsUI();
@@ -434,6 +469,9 @@ function renderSlotsUI() {
     btnLoad.innerText = '読み込み';
     btnLoad.disabled = !slot.data;
     btnLoad.addEventListener('click', () => {
+      if (!slot.data) return;
+      if (!window.confirm(`【${slot.name}】を読み込みますか？\n（現在の未保存の編集内容は破棄されます）`)) return;
+
       if (isPlaying) stopSimulation();
       recordHistoryState();
       applySnapshotData(slot.data);
@@ -445,6 +483,9 @@ function renderSlotsUI() {
     btnDelete.innerText = '削除';
     btnDelete.disabled = !slot.data;
     btnDelete.addEventListener('click', () => {
+      if (!slot.data) return;
+      if (!window.confirm(`【${slot.name}】のデータを完全に削除しますか？この操作は取り消せません。`)) return;
+
       deleteSlot(slot.id);
       renderSlotsUI();
     });
@@ -566,6 +607,10 @@ function setupUIEvents() {
 
   document.getElementById('btn-undo').addEventListener('click', () => {
     undo();
+  });
+
+  document.getElementById('btn-bgm-toggle').addEventListener('click', () => {
+    toggleBGM();
   });
 
   document.getElementById('btn-clear').addEventListener('click', () => {

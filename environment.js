@@ -78,7 +78,6 @@ export function buildRichApartmentRoom(scene) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  // 内側からのみ見え、外側・手前側からは透明（カリング）になる壁マテリアル
   const wallMat = new THREE.MeshStandardMaterial({ 
     color: 0xf6f6f7, 
     roughness: 0.9, 
@@ -95,7 +94,6 @@ export function buildRichApartmentRoom(scene) {
     side: THREE.FrontSide 
   });
 
-  // 奥の壁（Z = -16）: 法線を部屋の内側(+Z)に向ける
   const backWallGeo = new THREE.PlaneGeometry(32, 14);
   const backWall = new THREE.Mesh(backWallGeo, wallMat);
   backWall.position.set(0, 7, -16);
@@ -107,7 +105,6 @@ export function buildRichApartmentRoom(scene) {
   bbBack.position.set(0, 0.15, -15.98);
   scene.add(bbBack);
 
-  // 右の壁（X = 16）: 法線を部屋の内側(-X)に向ける
   const rightWallGeo = new THREE.PlaneGeometry(32, 14);
   const rightWall = new THREE.Mesh(rightWallGeo, wallMat);
   rightWall.rotation.y = -Math.PI / 2;
@@ -121,7 +118,6 @@ export function buildRichApartmentRoom(scene) {
   bbRight.position.set(15.98, 0.15, 0);
   scene.add(bbRight);
 
-  // 左側の窓壁構造（X = -16）: 法線を部屋の内側(+X)に向ける
   const createInnerPlane = (w, h, x, y, z, mat) => {
     const geo = new THREE.PlaneGeometry(w, h);
     const mesh = new THREE.Mesh(geo, mat);
@@ -136,7 +132,6 @@ export function buildRichApartmentRoom(scene) {
   const leftWallPillarS = createInnerPlane(2, 9.5, -16, 6.75, 15, wallMat);
   scene.add(leftWallUpper, leftWallLower, leftWallPillarN, leftWallPillarS);
 
-  // 窓サッシフレーム（内側向き）
   const fHBottom = createInnerPlane(28, 0.2, -15.98, 2.1, 0, frameMat);
   const fHTop = createInnerPlane(28, 0.2, -15.98, 11.4, 0, frameMat);
   const fHMid = createInnerPlane(28, 0.15, -15.98, 6.75, 0, frameMat);
@@ -147,7 +142,6 @@ export function buildRichApartmentRoom(scene) {
     scene.add(fV);
   }
 
-  // ガラス面（両面可視）
   const glassMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
     transparent: true,
@@ -161,14 +155,6 @@ export function buildRichApartmentRoom(scene) {
   glass.rotation.y = Math.PI / 2;
   glass.position.set(-15.95, 6.75, 0);
   scene.add(glass);
-
-  // 外景（空と光）
-  const skyGeo = new THREE.PlaneGeometry(80, 40);
-  const skyMat = new THREE.MeshBasicMaterial({ color: 0xbedcf0, side: THREE.DoubleSide });
-  const sky = new THREE.Mesh(skyGeo, skyMat);
-  sky.position.set(-28, 12, 0);
-  sky.rotation.y = Math.PI / 2;
-  scene.add(sky);
 }
 
 export function setShadowMode(mode) {
