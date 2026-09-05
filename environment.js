@@ -78,68 +78,84 @@ export function buildRichApartmentRoom(scene) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xf6f6f7, roughness: 0.9 });
-  const baseboardMat = new THREE.MeshStandardMaterial({ color: 0x48484a, roughness: 0.5 });
+  // 内側からのみ見え、外側・手前側からは透明（カリング）になる壁マテリアル
+  const wallMat = new THREE.MeshStandardMaterial({ 
+    color: 0xf6f6f7, 
+    roughness: 0.9, 
+    side: THREE.FrontSide 
+  });
+  const baseboardMat = new THREE.MeshStandardMaterial({ 
+    color: 0x48484a, 
+    roughness: 0.5, 
+    side: THREE.FrontSide 
+  });
+  const frameMat = new THREE.MeshStandardMaterial({ 
+    color: 0x1c1c1e, 
+    roughness: 0.4, 
+    side: THREE.FrontSide 
+  });
 
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(32, 14, 0.4), wallMat);
+  // 奥の壁（Z = -16）: 法線を部屋の内側(+Z)に向ける
+  const backWallGeo = new THREE.PlaneGeometry(32, 14);
+  const backWall = new THREE.Mesh(backWallGeo, wallMat);
   backWall.position.set(0, 7, -16);
   backWall.receiveShadow = true;
   scene.add(backWall);
 
-  const bbBack = new THREE.Mesh(new THREE.BoxGeometry(32, 0.3, 0.45), baseboardMat);
-  bbBack.position.set(0, 0.15, -15.95);
+  const bbBackGeo = new THREE.PlaneGeometry(32, 0.3);
+  const bbBack = new THREE.Mesh(bbBackGeo, baseboardMat);
+  bbBack.position.set(0, 0.15, -15.98);
   scene.add(bbBack);
 
-  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 14, 32), wallMat);
+  // 右の壁（X = 16）: 法線を部屋の内側(-X)に向ける
+  const rightWallGeo = new THREE.PlaneGeometry(32, 14);
+  const rightWall = new THREE.Mesh(rightWallGeo, wallMat);
+  rightWall.rotation.y = -Math.PI / 2;
   rightWall.position.set(16, 7, 0);
   rightWall.receiveShadow = true;
   scene.add(rightWall);
 
-  const bbRight = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 32), baseboardMat);
-  bbRight.position.set(15.95, 0.15, 0);
+  const bbRightGeo = new THREE.PlaneGeometry(32, 0.3);
+  const bbRight = new THREE.Mesh(bbRightGeo, baseboardMat);
+  bbRight.rotation.y = -Math.PI / 2;
+  bbRight.position.set(15.98, 0.15, 0);
   scene.add(bbRight);
 
-  // 左壁（全面ワイドパノラマ窓構造）
-  const leftWallUpper = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 32), wallMat);
-  leftWallUpper.position.set(-16, 12.75, 0);
-  scene.add(leftWallUpper);
+  // 左側の窓壁構造（X = -16）: 法線を部屋の内側(+X)に向ける
+  const createInnerPlane = (w, h, x, y, z, mat) => {
+    const geo = new THREE.PlaneGeometry(w, h);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.y = Math.PI / 2;
+    mesh.position.set(x, y, z);
+    return mesh;
+  };
 
-  const leftWallLower = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.0, 32), wallMat);
-  leftWallLower.position.set(-16, 1.0, 0);
-  scene.add(leftWallLower);
+  const leftWallUpper = createInnerPlane(32, 2.5, -16, 12.75, 0, wallMat);
+  const leftWallLower = createInnerPlane(32, 2.0, -16, 1.0, 0, wallMat);
+  const leftWallPillarN = createInnerPlane(2, 9.5, -16, 6.75, -15, wallMat);
+  const leftWallPillarS = createInnerPlane(2, 9.5, -16, 6.75, 15, wallMat);
+  scene.add(leftWallUpper, leftWallLower, leftWallPillarN, leftWallPillarS);
 
-  const leftWallPillarN = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9.5, 2), wallMat);
-  leftWallPillarN.position.set(-16, 6.75, -15);
-  scene.add(leftWallPillarN);
-
-  const leftWallPillarS = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9.5, 2), wallMat);
-  leftWallPillarS.position.set(-16, 6.75, 15);
-  scene.add(leftWallPillarS);
-
-  // 窓サッシフレーム（4連窓）
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.4 });
-  const fHBottom = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, 28), frameMat);
-  fHBottom.position.set(-16, 2.1, 0);
-  const fHTop = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, 28), frameMat);
-  fHTop.position.set(-16, 11.4, 0);
-  const fHMid = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.15, 28), frameMat);
-  fHMid.position.set(-16, 6.75, 0);
+  // 窓サッシフレーム（内側向き）
+  const fHBottom = createInnerPlane(28, 0.2, -15.98, 2.1, 0, frameMat);
+  const fHTop = createInnerPlane(28, 0.2, -15.98, 11.4, 0, frameMat);
+  const fHMid = createInnerPlane(28, 0.15, -15.98, 6.75, 0, frameMat);
   scene.add(fHBottom, fHTop, fHMid);
 
   for (let z = -14; z <= 14; z += 7) {
-    const fV = new THREE.Mesh(new THREE.BoxGeometry(0.45, 9.5, 0.2), frameMat);
-    fV.position.set(-16, 6.75, z);
+    const fV = createInnerPlane(0.2, 9.5, -15.98, 6.75, z, frameMat);
     scene.add(fV);
   }
 
-  // ガラス面
+  // ガラス面（両面可視）
   const glassMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
     transparent: true,
     opacity: 0.18,
     roughness: 0.05,
     transmission: 0.9,
-    thickness: 0.2
+    thickness: 0.2,
+    side: THREE.DoubleSide
   });
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(28, 9.5), glassMat);
   glass.rotation.y = Math.PI / 2;
@@ -148,7 +164,7 @@ export function buildRichApartmentRoom(scene) {
 
   // 外景（空と光）
   const skyGeo = new THREE.PlaneGeometry(80, 40);
-  const skyMat = new THREE.MeshBasicMaterial({ color: 0xbedcf0 });
+  const skyMat = new THREE.MeshBasicMaterial({ color: 0xbedcf0, side: THREE.DoubleSide });
   const sky = new THREE.Mesh(skyGeo, skyMat);
   sky.position.set(-28, 12, 0);
   sky.rotation.y = Math.PI / 2;
