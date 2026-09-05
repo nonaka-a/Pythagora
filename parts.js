@@ -40,6 +40,7 @@ export function createStartBall(x, y, z) {
   mesh.userData = {
     type: 'startBall',
     fixed: false,
+    locked: false,
     mass: 2.0,
     initialPos: new THREE.Vector3(x, y, z),
     initialRot: new THREE.Euler(0, 0, 0),
@@ -83,6 +84,7 @@ export function createGoalHole(x, y, z) {
   group.userData = {
     type: 'goalHole',
     fixed: true,
+    locked: false,
     initialPos: new THREE.Vector3(x, y, z),
     initialRot: new THREE.Euler(0, 0, 0),
     initialScale: new THREE.Vector3(1, 1, 1),
@@ -152,6 +154,7 @@ export function createPartMesh(type) {
   mesh.receiveShadow = true;
   mesh.userData.type = type;
   mesh.userData.fixed = (type === 'rail' || type === 'slope');
+  mesh.userData.locked = false;
   mesh.userData.mass = (type === 'domino') ? 3.0 : 1.0;
   mesh.userData.initialPos = new THREE.Vector3();
   mesh.userData.initialRot = new THREE.Euler();
@@ -215,23 +218,19 @@ export function buildCannonBody(obj) {
 
     body = new CANNON.Body({ mass: mass, material: physicsMaterial });
 
-    // 斜面の長手寸法と傾斜角の計算
     const rampLength = Math.hypot(w, h);
-    const angle = Math.atan2(h, w); // 傾き角度
+    const angle = Math.atan2(h, w);
     const rampThickness = 0.25 * scale.y;
 
-    // 1. 頑丈なBox形状による斜面（すり抜けを遮断）
     const rampShape = new CANNON.Box(new CANNON.Vec3(rampLength / 2, rampThickness / 2, d / 2));
     const rampQuat = new CANNON.Quaternion();
     rampQuat.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), -angle);
 
-    // 斜面の法線方向へ厚みの半分だけ内側にオフセット
     const nx = Math.sin(angle);
     const ny = -Math.cos(angle);
     const rampOffset = new CANNON.Vec3(nx * (rampThickness / 2), ny * (rampThickness / 2), 0);
     body.addShape(rampShape, rampOffset, rampQuat);
 
-    // 2. 底面支えブロック（床や他オブジェクトとの衝突用）
     const baseBlock = new CANNON.Box(new CANNON.Vec3(w / 4, h / 4, d / 2));
     body.addShape(baseBlock, new CANNON.Vec3(-w / 4, -h / 4, 0));
   } else if (uData.shape === 'compositeRail') {

@@ -118,6 +118,7 @@ function init() {
   setupUIEvents();
   setupCameraWidget();
   renderSlotsUI();
+  updateOutlinerUI();
 }
 
 function initAudio() {
@@ -200,11 +201,13 @@ function applySnapshotData(snapshotData, selectUuid = null) {
     obj.rotation.set(...s.rotation);
     obj.scale.set(...s.scale);
     obj.userData.fixed = s.fixed;
+    obj.userData.locked = !!s.locked;
     obj.userData.mass = s.mass;
   }
 
   const target = registeredObjects.find(o => o.uuid === selectUuid);
   selectObject(target || null);
+  updateOutlinerUI();
 }
 
 function addPart(type) {
@@ -218,11 +221,13 @@ function addPart(type) {
   scene.add(mesh);
   registeredObjects.push(mesh);
   selectObject(mesh);
+  updateOutlinerUI();
 }
 
 function duplicateSelectedObject() {
   if (!selectedObject || isPlaying) return;
   if (selectedObject === startBall || selectedObject === goalHole) return;
+  if (selectedObject.userData.locked) return;
 
   recordHistoryState();
   const uData = selectedObject.userData;
@@ -232,11 +237,13 @@ function duplicateSelectedObject() {
   clone.rotation.copy(selectedObject.rotation);
   clone.scale.copy(selectedObject.scale);
   clone.userData.fixed = uData.fixed;
+  clone.userData.locked = false;
   clone.userData.mass = uData.mass;
 
   scene.add(clone);
   registeredObjects.push(clone);
   selectObject(clone);
+  updateOutlinerUI();
 }
 
 function buildPhysicsBodies() {
@@ -287,7 +294,9 @@ function stopSimulation() {
     clearTimeout(goalTimeoutId);
     goalTimeoutId = null;
   }
-  if (selectedObject) transformControl.attach(selectedObject);
+  if (selectedObject && !selectedObject.userData.locked) {
+    transformControl.attach(selectedObject);
+  }
 }
 
 function saveInitialStates() {
@@ -308,6 +317,9 @@ function restoreInitialStates() {
 
 function selectObject(obj) {
   if (isPlaying) return;
+  if (obj && obj.userData.locked) {
+    return;
+  }
   selectedObject = obj;
   if (obj) {
     transformControl.attach(obj);
@@ -326,6 +338,7 @@ function selectObject(obj) {
     document.getElementById('no-selection').style.display = 'block';
     document.getElementById('selection-panel').style.display = 'none';
   }
+  updateOutlinerUI();
 }
 
 function updateInspectorFromObject(obj) {
@@ -349,7 +362,7 @@ function updateInspectorFromObject(obj) {
 }
 
 function updateObjectFromInspector(e) {
-  if (!selectedObject) return;
+  if (!selectedObject || selectedObject.userData.locked) return;
 
   const px = parseFloat(document.getElementById('prop-px').value) || 0;
   const py = parseFloat(document.getElementById('prop-py').value) || 0;
@@ -419,6 +432,61 @@ function checkGoalCondition() {
       break;
     }
   }
+}
+
+function getObjectDisplayName(type) {
+  const map = {
+    startBall: 'スタート球',
+    goalHole: 'ゴール旗',
+    cube: '直方体',
+    sphere: '球体',
+    cylinder: '円柱',
+    domino: 'ドミノ',
+    rail: 'レール',
+    slope: '滑り台',
+    seesaw: 'シーソー'
+  };
+  return map[type] || type;
+}
+
+function updateOutlinerUI() {
+  const listEl = document.getElementById('parts-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  registeredObjects.forEach((obj, idx) => {
+    const row = document.createElement('div');
+    row.className = 'part-list-item';
+    if (selectedObject === obj) row.classList.add('selected');
+    if (obj.userData.locked) row.classList.add('locked');
+
+    const nameLabel = document.createElement('span');
+    nameLabel.className = 'part-list-name';
+    nameLabel.innerText = `${idx + 1}. ${getObjectDisplayName(obj.userData.type)}`;
+    nameLabel.addEventListener('click', () => {
+      if (!obj.userData.locked) {
+        selectObject(obj);
+      }
+    });
+
+    const lockBtn = document.createElement('button');
+    lockBtn.className = 'part-lock-btn';
+    lockBtn.title = obj.userData.locked ? 'ロック解除' : 'ロック';
+    lockBtn.innerText = obj.userData.locked ? '🔒' : '🔓';
+    lockBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      recordHistoryState();
+      obj.userData.locked = !obj.userData.locked;
+      if (obj.userData.locked && selectedObject === obj) {
+        selectObject(null);
+      }
+      updateOutlinerUI();
+    });
+
+    row.appendChild(nameLabel);
+    row.appendChild(lockBtn);
+    listEl.appendChild(row);
+  });
 }
 
 function renderSlotsUI() {
@@ -503,10 +571,11 @@ function renderSlotsUI() {
 function panCamera(dx, dy) {
   const factor = 0.8;
   const panOffset = new THREE.Vector3();
-  const eye = new THREE.Vector3().subVectors(camera.position, orbit.target);
-  
-  const right = new THREE.Vector3().crossVectors(camera.up, eye).normalize();
-  const up = new THREE.Vector3().clone(camera.up).normalize();
+
+  // カメラのローカルマトリクスから正確な右方向(X軸)・上方向(Y軸)を取得
+  const right = new THREE.Vector3();
+  const up = new THREE.Vector3();
+  camera.matrixWorld.extractBasis(right, up, new THREE.Vector3());
 
   panOffset.addScaledVector(right, dx * factor);
   panOffset.addScaledVector(up, dy * factor);
@@ -582,6 +651,9 @@ function setupEvents() {
       while (topObj.parent && topObj.parent !== scene) {
         topObj = topObj.parent;
       }
+      if (topObj.userData.locked) {
+        return;
+      }
       if (topObj !== selectedObject) {
         selectObject(topObj);
       }
@@ -622,6 +694,7 @@ function setupUIEvents() {
     }
     registeredObjects = [startBall, goalHole];
     selectObject(null);
+    updateOutlinerUI();
   });
 
   document.getElementById('btn-duplicate').addEventListener('click', () => {
@@ -646,10 +719,12 @@ function setupUIEvents() {
 
   document.getElementById('btn-delete').addEventListener('click', () => {
     if (!selectedObject || selectedObject === startBall || selectedObject === goalHole) return;
+    if (selectedObject.userData.locked) return;
     recordHistoryState();
     scene.remove(selectedObject);
     registeredObjects = registeredObjects.filter(o => o !== selectedObject);
     selectObject(null);
+    updateOutlinerUI();
   });
 
   const modalSlots = document.getElementById('modal-slots');

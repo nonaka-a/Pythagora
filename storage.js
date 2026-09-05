@@ -64,6 +64,7 @@ export function serializeRegisteredObjects(registeredObjects) {
     rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
     scale: [obj.scale.x, obj.scale.y, obj.scale.z],
     fixed: !!obj.userData.fixed,
+    locked: !!obj.userData.locked,
     mass: obj.userData.mass ?? 1.0,
     shape: obj.userData.shape,
     size: obj.userData.size ? [...obj.userData.size] : null,

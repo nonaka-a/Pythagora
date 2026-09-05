@@ -46,10 +46,10 @@ export function createWoodTexture() {
 }
 
 export function buildRichApartmentRoom(scene) {
-  const hemiLight = new THREE.HemisphereLight(0xe8f0f8, 0xd0c4b2, 0.8);
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xddd2c4, 1.2);
   scene.add(hemiLight);
 
-  sunLight = new THREE.DirectionalLight(0xfff6e5, 1.5);
+  sunLight = new THREE.DirectionalLight(0xfff8ee, 1.1);
   setShadowMode('natural');
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.width = 2048;
