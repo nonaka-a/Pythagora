@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Physics Machine Builder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div id="top-bar" class="ui-layer interactive">
+    <button id="btn-mode-toggle" class="btn primary">スタート</button>
+    <button id="btn-reset" class="btn">リセット</button>
+    <button id="btn-undo" class="btn">元に戻す (⌘Z)</button>
+    <button id="btn-slots-open" class="btn">セーブ / ロード</button>
+    <button id="btn-settings-open" class="btn">環境設定</button>
+    <button id="btn-clear" class="btn danger">全消去</button>
+  </div>
+
+  <div id="sidebar-left" class="ui-layer interactive">
+    <div class="panel-title">パーツ追加</div>
+    <div class="parts-grid">
+      <button class="part-btn" data-type="cube">直方体</button>
+      <button class="part-btn" data-type="sphere">球体</button>
+      <button class="part-btn" data-type="cylinder">円柱</button>
+      <button class="part-btn" data-type="domino">ドミノ</button>
+      <button class="part-btn" data-type="rail">レール</button>
+      <button class="part-btn" data-type="slope">滑り台</button>
+      <button class="part-btn" data-type="seesaw">シーソー</button>
+    </div>
+    <div class="panel-title" style="margin-top: 14px;">ギズモ操作</div>
+    <div class="mode-switch">
+      <button id="gizmo-trans" class="mode-btn active">移動</button>
+      <button id="gizmo-rot" class="mode-btn">回転</button>
+      <button id="gizmo-scale" class="mode-btn">拡縮</button>
+    </div>
+  </div>
+
+  <div id="sidebar-right" class="ui-layer interactive">
+    <div class="panel-title">プロパティ</div>
+    <div id="no-selection" class="empty-state">パーツをクリックして選択</div>
+    <div id="selection-panel" style="display: none;" class="prop-group">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="item-name" class="object-badge">OBJECT</span>
+        <button id="btn-duplicate" class="btn small">複製</button>
+      </div>
+      
+      <div class="prop-section-label">位置 (Position)</div>
+      <div class="prop-row">
+        <div class="vector-inputs">
+          <input type="number" step="0.1" id="prop-px" placeholder="X">
+          <input type="number" step="0.1" id="prop-py" placeholder="Y">
+          <input type="number" step="0.1" id="prop-pz" placeholder="Z">
+        </div>
+      </div>
+
+      <div class="prop-section-label">回転 (Rotation: deg)</div>
+      <div class="prop-row">
+        <div class="vector-inputs">
+          <input type="number" step="5" id="prop-rx" placeholder="X">
+          <input type="number" step="5" id="prop-ry" placeholder="Y">
+          <input type="number" step="5" id="prop-rz" placeholder="Z">
+        </div>
+      </div>
+
+      <div id="scale-container">
+        <div class="prop-section-label" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>拡大縮小 (Scale)</span>
+          <label style="font-size: 11px; cursor:pointer; color:#98989d;">
+            <input type="checkbox" id="prop-uniform-scale" checked> XYZ連動
+          </label>
+        </div>
+        <div class="prop-row">
+          <div class="vector-inputs">
+            <input type="number" step="0.1" id="prop-sx" placeholder="X">
+            <input type="number" step="0.1" id="prop-sy" placeholder="Y">
+            <input type="number" step="0.1" id="prop-sz" placeholder="Z">
+          </div>
+        </div>
+      </div>
+
+      <div class="prop-group" id="mass-container" style="margin-top: 4px;">
+        <div class="prop-section-label" style="display:flex; justify-content:space-between;">
+          <span>重さ (Mass)</span>
+          <span id="mass-val-display" style="color:#0a84ff;">1.0</span>
+        </div>
+        <input type="range" id="prop-mass" min="0.1" max="10.0" step="0.1" value="1.0" style="accent-color: #0a84ff; width: 100%; cursor: pointer;">
+        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8e8e93;">
+          <span>軽い (0.1)</span>
+          <span>標準 (1.0)</span>
+          <span>重い (10.0)</span>
+        </div>
+      </div>
+
+      <div class="toggle-row" id="fixed-row">
+        <label>衝撃で動かさない (固定)</label>
+        <label class="switch">
+          <input type="checkbox" id="prop-fixed">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <button id="btn-delete" class="btn danger" style="margin-top: 12px; width: 100%;">選択パーツを削除</button>
+    </div>
+  </div>
+
+  <!-- カメラ操作オン・スクリーンコントローラー -->
+  <div id="camera-controls-widget" class="ui-layer interactive">
+    <div class="cam-widget-title">カメラ操作</div>
+    <div class="cam-dpad">
+      <button class="cam-btn cam-up" id="cam-pan-up" title="上移動">▲</button>
+      <button class="cam-btn cam-left" id="cam-pan-left" title="左移動">◀</button>
+      <button class="cam-btn cam-center" id="cam-reset" title="初期位置に戻す">●</button>
+      <button class="cam-btn cam-right" id="cam-pan-right" title="右移動">▶</button>
+      <button class="cam-btn cam-down" id="cam-pan-down" title="下移動">▼</button>
+    </div>
+    <div class="cam-zoom-group">
+      <button class="btn small" id="cam-zoom-in" title="寄る (ズームイン)">＋ 寄り</button>
+      <button class="btn small" id="cam-zoom-out" title="引く (ズームアウト)">－ 引き</button>
+    </div>
+    <div class="cam-presets">
+      <button class="cam-preset-btn" id="cam-view-top">真上</button>
+      <button class="cam-preset-btn" id="cam-view-front">正面</button>
+      <button class="cam-preset-btn" id="cam-view-side">真横</button>
+    </div>
+  </div>
+
+  <!-- スロット保存・ロードモーダル -->
+  <div id="modal-slots" class="modal-backdrop ui-layer">
+    <div class="modal-window interactive">
+      <div class="modal-header">
+        <h2>ステージスロット (全5枠)</h2>
+        <button class="modal-close" id="btn-slots-close">&times;</button>
+      </div>
+      <div class="slots-list" id="slots-container"></div>
+    </div>
+  </div>
+
+  <!-- 環境設定モーダル -->
+  <div id="modal-settings" class="modal-backdrop ui-layer">
+    <div class="modal-window interactive" style="max-width: 360px;">
+      <div class="modal-header">
+        <h2>環境設定</h2>
+        <button class="modal-close" id="btn-settings-close">&times;</button>
+      </div>
+      <div style="margin-top: 14px;">
+        <div class="prop-section-label">影の向き</div>
+        <div class="mode-switch" style="margin-top: 6px;">
+          <button id="shadow-natural" class="mode-btn active">自然な窓光</button>
+          <button id="shadow-topdown" class="mode-btn">真下に落とす</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="goal-banner" class="ui-layer">
+    <h1>GOAL!</h1>
+    <p>ボールがカップインしました！</p>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+      }
+    }
+  </script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
