@@ -105,6 +105,85 @@ export function buildRichApartmentRoom(scene) {
   bbBack.position.set(0, 0.15, -15.98);
   scene.add(bbBack);
 
+  // 奥壁の室内ドア構築 (裏側からはカリングされて見えない構造)
+  const doorGroup = new THREE.Group();
+  doorGroup.position.set(6.5, 0, -15.95);
+
+  const doorFrameMat = new THREE.MeshStandardMaterial({ 
+    color: 0x3a3028, 
+    roughness: 0.6, 
+    side: THREE.FrontSide 
+  });
+  const doorPanelMat = new THREE.MeshStandardMaterial({ 
+    color: 0x5a4838, 
+    roughness: 0.5, 
+    side: THREE.FrontSide 
+  });
+  const trimMat = new THREE.MeshStandardMaterial({ 
+    color: 0x47382a, 
+    roughness: 0.5, 
+    side: THREE.FrontSide 
+  });
+  const doorHandleMat = new THREE.MeshStandardMaterial({ 
+    color: 0xd4af37, 
+    metalness: 0.8, 
+    roughness: 0.2, 
+    side: THREE.FrontSide 
+  });
+
+  const totalDoorW = 4.6;
+  const totalDoorH = 9.2;
+  const frameThickness = 0.25;
+
+  // 外枠 (Boxジオメトリ＋FrontSideで部屋の内側のみレンダリング)
+  const fPostLeft = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, totalDoorH, 0.08), doorFrameMat);
+  fPostLeft.position.set(-totalDoorW / 2 + frameThickness / 2, totalDoorH / 2, 0.04);
+  fPostLeft.castShadow = true;
+
+  const fPostRight = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, totalDoorH, 0.08), doorFrameMat);
+  fPostRight.position.set(totalDoorW / 2 - frameThickness / 2, totalDoorH / 2, 0.04);
+  fPostRight.castShadow = true;
+
+  const fTop = new THREE.Mesh(new THREE.BoxGeometry(totalDoorW, frameThickness, 0.08), doorFrameMat);
+  fTop.position.set(0, totalDoorH - frameThickness / 2, 0.04);
+  fTop.castShadow = true;
+
+  // 扉本体
+  const innerW = totalDoorW - frameThickness * 2;
+  const innerH = totalDoorH - frameThickness;
+  const doorBody = new THREE.Mesh(new THREE.PlaneGeometry(innerW, innerH), doorPanelMat);
+  doorBody.position.set(0, innerH / 2, 0.01);
+  doorBody.castShadow = true;
+
+  // 扉の彫り込みパネル装飾
+  const panelUpper = new THREE.Mesh(new THREE.PlaneGeometry(innerW * 0.82, innerH * 0.52), trimMat);
+  panelUpper.position.set(0, innerH * 0.68, 0.02);
+
+  const panelLower = new THREE.Mesh(new THREE.PlaneGeometry(innerW * 0.82, innerH * 0.3), trimMat);
+  panelLower.position.set(0, innerH * 0.22, 0.02);
+
+  // レバーハンドル & ノブ
+  const handleY = 4.0;
+  const handleX = -innerW * 0.38;
+
+  const handlePlate = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.6), doorHandleMat);
+  handlePlate.position.set(handleX, handleY, 0.025);
+
+  const handleStem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.08, 12), doorHandleMat);
+  handleStem.rotation.x = Math.PI / 2;
+  handleStem.position.set(handleX, handleY, 0.06);
+
+  const handleBar = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.05, 0.03), doorHandleMat);
+  handleBar.position.set(handleX - 0.16, handleY, 0.1);
+  handleBar.castShadow = true;
+
+  doorGroup.add(
+    fPostLeft, fPostRight, fTop,
+    doorBody, panelUpper, panelLower,
+    handlePlate, handleStem, handleBar
+  );
+  scene.add(doorGroup);
+
   const rightWallGeo = new THREE.PlaneGeometry(32, 14);
   const rightWall = new THREE.Mesh(rightWallGeo, wallMat);
   rightWall.rotation.y = -Math.PI / 2;

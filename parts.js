@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 
 export const materials = {
   default: new THREE.MeshStandardMaterial({ color: 0x8e8e93, roughness: 0.4, metalness: 0.1 }),
+  cube: new THREE.MeshStandardMaterial({ color: 0x4a4a4e, roughness: 0.45, metalness: 0.1 }),
   domino: new THREE.MeshStandardMaterial({ color: 0x0a84ff, roughness: 0.2, metalness: 0.2 }),
   slope: new THREE.MeshStandardMaterial({ color: 0xff9f0a, roughness: 0.3, metalness: 0.05 }),
   seesaw: new THREE.MeshStandardMaterial({ color: 0xbf5af2, roughness: 0.4, metalness: 0.1 }),
@@ -97,7 +98,7 @@ export function createPartMesh(type) {
   let mesh;
   switch (type) {
     case 'cube':
-      mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), materials.default);
+      mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), materials.cube);
       mesh.userData.shape = 'box';
       mesh.userData.size = [1, 1, 1];
       break;
